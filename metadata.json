@@ -1,0 +1,6 @@
+{
+  "name": "VeriDoc - Validação de Documentos",
+  "description": "Plataforma de garantia de autenticidade, validação e emissão de documentos oficiais com selo criptográfico e QR Code.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
