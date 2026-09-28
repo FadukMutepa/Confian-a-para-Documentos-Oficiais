@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   Shield,
@@ -23,6 +23,8 @@ import RegisterPage from './components/RegisterPage.tsx';
 import AdminDashboard from './components/AdminDashboard.tsx';
 import InstitutionDashboard from './components/InstitutionDashboard.tsx';
 import VerifyModal from './components/VerifyModal.tsx';
+import PublicVerificationView, { PublicVerificationState } from './components/PublicVerificationView.tsx';
+import QRCodeModal from './components/QRCodeModal.tsx';
 
 // SVG QR Code generator component to faithfully render the certificate QR code
 function QRCodeSvg({ className = 'w-16 h-16' }: { className?: string }) {
@@ -34,22 +36,18 @@ function QRCodeSvg({ className = 'w-16 h-16' }: { className?: string }) {
       xmlns="http://www.w3.org/2000/svg"
       aria-label="QR Code de validação"
     >
-      {/* Top Left Position Pattern */}
       <rect x="5" y="5" width="28" height="28" rx="2" fill="#0f172a" />
       <rect x="9" y="9" width="20" height="20" rx="1" fill="#ffffff" />
       <rect x="13" y="13" width="12" height="12" rx="1" fill="#0f172a" />
 
-      {/* Top Right Position Pattern */}
       <rect x="67" y="5" width="28" height="28" rx="2" fill="#0f172a" />
       <rect x="71" y="9" width="20" height="20" rx="1" fill="#ffffff" />
       <rect x="75" y="13" width="12" height="12" rx="1" fill="#0f172a" />
 
-      {/* Bottom Left Position Pattern */}
       <rect x="5" y="67" width="28" height="28" rx="2" fill="#0f172a" />
       <rect x="9" y="71" width="20" height="20" rx="1" fill="#ffffff" />
       <rect x="13" y="75" width="12" height="12" rx="1" fill="#0f172a" />
 
-      {/* Data modules and timing tracks */}
       <rect x="37" y="7" width="4" height="4" fill="#0f172a" />
       <rect x="45" y="7" width="4" height="4" fill="#0f172a" />
       <rect x="53" y="7" width="4" height="4" fill="#0f172a" />
@@ -66,7 +64,6 @@ function QRCodeSvg({ className = 'w-16 h-16' }: { className?: string }) {
       <rect x="45" y="27" width="4" height="4" fill="#0f172a" />
       <rect x="53" y="27" width="4" height="4" fill="#0f172a" />
 
-      {/* Center cluster */}
       <rect x="37" y="37" width="8" height="8" fill="#0f172a" />
       <rect x="49" y="37" width="6" height="6" fill="#0f172a" />
       <rect x="37" y="49" width="6" height="6" fill="#0f172a" />
@@ -97,7 +94,6 @@ function QRCodeSvg({ className = 'w-16 h-16' }: { className?: string }) {
       <rect x="47" y="89" width="5" height="5" fill="#0f172a" />
       <rect x="56" y="89" width="6" height="6" fill="#0f172a" />
 
-      {/* Bottom right region */}
       <rect x="69" y="65" width="6" height="6" fill="#0f172a" />
       <rect x="79" y="65" width="6" height="6" fill="#0f172a" />
       <rect x="89" y="65" width="5" height="5" fill="#0f172a" />
@@ -111,7 +107,7 @@ function QRCodeSvg({ className = 'w-16 h-16' }: { className?: string }) {
   );
 }
 
-// Initial mockup data
+// Initial mock data
 const INITIAL_INSTITUTIONS: Institution[] = [
   {
     id: 'inst-1',
@@ -151,15 +147,83 @@ const INITIAL_DOCUMENTS: OfficialDocument[] = [
   },
 ];
 
+// Helper to inspect URL when user scans QR code
+function parseUrlForVerification(): {
+  isVerify: boolean;
+  status: PublicVerificationState;
+  code: string;
+} {
+  if (typeof window === 'undefined') {
+    return { isVerify: false, status: 'autentico', code: 'VD-2026-9A8F2K' };
+  }
+
+  const path = window.location.pathname.toLowerCase();
+  const search = new URLSearchParams(window.location.search);
+  const hash = window.location.hash.toLowerCase();
+
+  const codeParam = search.get('verify') || search.get('code') || '';
+  const statusParam = search.get('status') || '';
+
+  const isVerify =
+    path.includes('/verify') ||
+    hash.includes('/verify') ||
+    codeParam !== '' ||
+    statusParam !== '';
+
+  let status: PublicVerificationState = 'autentico';
+  let code = 'VD-2026-9A8F2K';
+
+  if (
+    path.includes('alterado') ||
+    hash.includes('alterado') ||
+    statusParam.toLowerCase() === 'alterado' ||
+    codeParam.toLowerCase().includes('alterado')
+  ) {
+    status = 'alterado';
+    code = 'VD-2026-ALTERADO';
+  } else if (
+    path.includes('revogado') ||
+    hash.includes('revogado') ||
+    statusParam.toLowerCase() === 'revogado' ||
+    codeParam.toLowerCase().includes('revogado')
+  ) {
+    status = 'revogado';
+    code = 'VD-2026-REVOGADO';
+  } else if (codeParam) {
+    code = codeParam.toUpperCase();
+    status = 'autentico';
+  } else if (path.includes('autentico') || hash.includes('autentico')) {
+    code = 'VD-2026-AUTENTICO';
+    status = 'autentico';
+  }
+
+  return { isVerify, status, code };
+}
+
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('landing');
   const [institutions, setInstitutions] = useState<Institution[]>(INITIAL_INSTITUTIONS);
   const [documents, setDocuments] = useState<OfficialDocument[]>(INITIAL_DOCUMENTS);
   const [currentInstitution, setCurrentInstitution] = useState<Institution>(INITIAL_INSTITUTIONS[0]);
 
-  // Verification modal state
+  // Public verification result state
+  const [publicVerifyStatus, setPublicVerifyStatus] = useState<PublicVerificationState>('autentico');
+  const [publicVerifyCode, setPublicVerifyCode] = useState<string>('VD-2026-9A8F2K');
+
+  // Modal states
   const [isVerifyOpen, setIsVerifyOpen] = useState(false);
   const [verifyTargetCode, setVerifyTargetCode] = useState('VD-2026-9A8F2K');
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+
+  // Detect URL on page load (e.g. when QR code is scanned!)
+  useEffect(() => {
+    const { isVerify, status, code } = parseUrlForVerification();
+    if (isVerify) {
+      setPublicVerifyStatus(status);
+      setPublicVerifyCode(code);
+      setCurrentView('public-verify');
+    }
+  }, []);
 
   // Handle successful login
   const handleLoginSuccess = (role: 'admin' | 'institution', instData?: Institution) => {
@@ -204,6 +268,40 @@ export default function App() {
     setVerifyTargetCode(code);
     setIsVerifyOpen(true);
   };
+
+  // Direct trigger to test public verification screen
+  const openPublicVerification = (status: PublicVerificationState) => {
+    setPublicVerifyStatus(status);
+    setPublicVerifyCode(
+      status === 'autentico'
+        ? 'VD-2026-AUTENTICO'
+        : status === 'alterado'
+        ? 'VD-2026-ALTERADO'
+        : 'VD-2026-REVOGADO'
+    );
+    setCurrentView('public-verify');
+  };
+
+  // View: Public Verification View (Shown when QR is scanned!)
+  if (currentView === 'public-verify') {
+    return (
+      <PublicVerificationView
+        status={publicVerifyStatus}
+        code={publicVerifyCode}
+        onNavigateHome={() => setCurrentView('landing')}
+        onChangeStatus={(s) => {
+          setPublicVerifyStatus(s);
+          setPublicVerifyCode(
+            s === 'autentico'
+              ? 'VD-2026-AUTENTICO'
+              : s === 'alterado'
+              ? 'VD-2026-ALTERADO'
+              : 'VD-2026-REVOGADO'
+          );
+        }}
+      />
+    );
+  }
 
   // View: Login Page (Image 1)
   if (currentView === 'login') {
@@ -255,7 +353,7 @@ export default function App() {
 
   // View: Main Landing Page
   return (
-    <div className="min-h-screen bg-[#070e1c] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className="min-h-screen bg-[#070e1c] text-slate-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif] relative">
       {/* Document Verifier Modal */}
       <VerifyModal
         isOpen={isVerifyOpen}
@@ -264,10 +362,28 @@ export default function App() {
         documents={documents}
       />
 
+      {/* QR Codes Viewer / Tester Modal */}
+      <QRCodeModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        onSelectStatus={openPublicVerification}
+      />
+
+      {/* Floating Button to open QR Codes Modal */}
+      <div className="fixed bottom-6 right-6 z-40">
+        <button
+          onClick={() => setIsQrModalOpen(true)}
+          className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-3 rounded-2xl shadow-xl shadow-blue-600/40 flex items-center gap-2.5 transition-all hover:scale-105 border border-blue-400/40 cursor-pointer"
+        >
+          <QrCode className="w-5 h-5" />
+          <span className="text-xs sm:text-sm">3 QR Codes de Teste</span>
+        </button>
+      </div>
+
       {/* ======================================================== */}
       {/* 1. TOP NAVIGATION BAR (Header)                           */}
       {/* ======================================================== */}
-      <header className="sticky top-0 z-40 bg-[#070e1c]/95 backdrop-blur-md border-b border-slate-800/80">
+      <header className="sticky top-0 z-30 bg-[#070e1c]/95 backdrop-blur-md border-b border-slate-800/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-18 flex items-center justify-between">
           {/* Brand Logo */}
           <div
@@ -483,7 +599,7 @@ export default function App() {
                 <div className="mt-6 pt-4 border-t border-slate-800/60 text-center">
                   <button
                     type="button"
-                    onClick={() => openVerifierWithCode('VD-2026-9A8F2K')}
+                    onClick={() => openPublicVerification('autentico')}
                     className="text-blue-400 hover:text-blue-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors group cursor-pointer"
                   >
                     <span>Testar verificação deste modelo</span>

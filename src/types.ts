@@ -4,7 +4,8 @@ export type ViewMode =
   | 'register'
   | 'admin-dashboard'
   | 'institution-dashboard'
-  | 'verify-document';
+  | 'verify-document'
+  | 'public-verify';
 
 export type InstitutionStatus = 'APPROVED' | 'PENDING' | 'SUSPENDED';
 
