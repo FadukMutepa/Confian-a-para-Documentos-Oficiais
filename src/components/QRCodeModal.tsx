@@ -16,7 +16,7 @@ import {
 interface QRCodeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectStatus?: (status: 'autentico' | 'alterado' | 'revogado') => void;
+  onSelectStatus?: (status: 'autentico' | 'alterado' | 'revogado', code: string) => void;
 }
 
 export default function QRCodeModal({
@@ -35,14 +35,15 @@ export default function QRCodeModal({
 
   const activeBase = selectedHost === 'worker' ? workerBase : previewBase;
 
-  const urlAutentico = `${activeBase}/verify/VD-2026-AUTENTICO`;
-  const urlAlterado = `${activeBase}/verify/VD-2026-ALTERADO`;
-  const urlRevogado = `${activeBase}/verify/VD-2026-REVOGADO`;
+  // Exact URLs requested by user
+  const urlAutentico = `${activeBase}/?codigo=VD-2026-AUT001`;
+  const urlAlterado = `${activeBase}/?codigo=VD-2026-ALT001`;
+  const urlRevogado = `${activeBase}/?codigo=VD-2026-REV001`;
 
   useEffect(() => {
-    QRCode.toDataURL(urlAutentico, { width: 320, margin: 2 }).then(setQrAutentico);
-    QRCode.toDataURL(urlAlterado, { width: 320, margin: 2 }).then(setQrAlterado);
-    QRCode.toDataURL(urlRevogado, { width: 320, margin: 2 }).then(setQrRevogado);
+    QRCode.toDataURL(urlAutentico, { width: 340, margin: 2 }).then(setQrAutentico);
+    QRCode.toDataURL(urlAlterado, { width: 340, margin: 2 }).then(setQrAlterado);
+    QRCode.toDataURL(urlRevogado, { width: 340, margin: 2 }).then(setQrRevogado);
   }, [urlAutentico, urlAlterado, urlRevogado]);
 
   if (!isOpen) return null;
@@ -66,7 +67,7 @@ export default function QRCodeModal({
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-lg bg-slate-900/60 border border-slate-800 transition-colors"
+          className="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-lg bg-slate-900/60 border border-slate-800 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -78,10 +79,10 @@ export default function QRCodeModal({
           </div>
           <div>
             <h2 className="text-xl font-bold tracking-tight text-white">
-              Códigos QR Sincronizados para Consulta Pública
+              3 Códigos QR Sincronizados com a Consulta Pública
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Aponte a câmara do seu telemóvel para qualquer QR Code para abrir o resultado instantaneamente
+              Escaneie diretamente com o telemóvel para abrir a consulta com a função <code className="text-cyan-400 font-mono">mostrarResultado()</code>
             </p>
           </div>
         </div>
@@ -92,7 +93,7 @@ export default function QRCodeModal({
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSelectedHost('worker')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer ${
                 selectedHost === 'worker'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'bg-slate-800 text-slate-300 hover:text-white'
@@ -102,7 +103,7 @@ export default function QRCodeModal({
             </button>
             <button
               onClick={() => setSelectedHost('preview')}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition-colors ${
+              className={`px-3 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer ${
                 selectedHost === 'preview'
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'bg-slate-800 text-slate-300 hover:text-white'
@@ -135,18 +136,21 @@ export default function QRCodeModal({
               )}
             </div>
 
-            <span className="text-xs font-semibold text-emerald-400">
+            <span className="text-xs font-bold text-emerald-400">
               DOCUMENTO VÁLIDO
             </span>
-            <span className="text-[11px] font-mono text-slate-400 mt-1 truncate max-w-[200px]">
-              /verify/VD-2026-AUTENTICO
+            <span className="text-[11px] font-mono text-cyan-300 font-bold mt-1">
+              ?codigo=VD-2026-AUT001
+            </span>
+            <span className="text-[10px] text-slate-400 mt-0.5">
+              Estado: AUTÊNTICO
             </span>
 
             {/* Actions */}
             <div className="mt-4 pt-3 border-t border-blue-900/60 w-full flex items-center justify-center gap-2">
               <button
-                onClick={() => downloadQR(qrAutentico, 'qrcode-veridoc-autentico.png')}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors"
+                onClick={() => downloadQR(qrAutentico, 'qrcode-VD-2026-AUT001.png')}
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors cursor-pointer"
                 title="Descarregar imagem do QR Code"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -155,7 +159,7 @@ export default function QRCodeModal({
 
               <button
                 onClick={() => copyToClipboard(urlAutentico)}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors"
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors cursor-pointer"
                 title="Copiar Link"
               >
                 {copiedUrl === urlAutentico ? (
@@ -169,13 +173,13 @@ export default function QRCodeModal({
               {onSelectStatus && (
                 <button
                   onClick={() => {
-                    onSelectStatus('autentico');
+                    onSelectStatus('autentico', 'VD-2026-AUT001');
                     onClose();
                   }}
-                  className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                  className="p-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Ver Tela</span>
+                  <span>Ver</span>
                 </button>
               )}
             </div>
@@ -201,18 +205,21 @@ export default function QRCodeModal({
               )}
             </div>
 
-            <span className="text-xs font-semibold text-amber-400">
+            <span className="text-xs font-bold text-amber-400">
               DADOS NÃO CORRESPONDEM
             </span>
-            <span className="text-[11px] font-mono text-slate-400 mt-1 truncate max-w-[200px]">
-              /verify/VD-2026-ALTERADO
+            <span className="text-[11px] font-mono text-cyan-300 font-bold mt-1">
+              ?codigo=VD-2026-ALT001
+            </span>
+            <span className="text-[10px] text-slate-400 mt-0.5">
+              Estado: ALTERADO
             </span>
 
             {/* Actions */}
             <div className="mt-4 pt-3 border-t border-blue-900/60 w-full flex items-center justify-center gap-2">
               <button
-                onClick={() => downloadQR(qrAlterado, 'qrcode-veridoc-alterado.png')}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors"
+                onClick={() => downloadQR(qrAlterado, 'qrcode-VD-2026-ALT001.png')}
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors cursor-pointer"
                 title="Descarregar imagem do QR Code"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -221,7 +228,7 @@ export default function QRCodeModal({
 
               <button
                 onClick={() => copyToClipboard(urlAlterado)}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors"
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors cursor-pointer"
                 title="Copiar Link"
               >
                 {copiedUrl === urlAlterado ? (
@@ -235,13 +242,13 @@ export default function QRCodeModal({
               {onSelectStatus && (
                 <button
                   onClick={() => {
-                    onSelectStatus('alterado');
+                    onSelectStatus('alterado', 'VD-2026-ALT001');
                     onClose();
                   }}
-                  className="p-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                  className="p-2 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Ver Tela</span>
+                  <span>Ver</span>
                 </button>
               )}
             </div>
@@ -267,18 +274,21 @@ export default function QRCodeModal({
               )}
             </div>
 
-            <span className="text-xs font-semibold text-rose-400">
+            <span className="text-xs font-bold text-rose-400">
               DOCUMENTO REVOGADO
             </span>
-            <span className="text-[11px] font-mono text-slate-400 mt-1 truncate max-w-[200px]">
-              /verify/VD-2026-REVOGADO
+            <span className="text-[11px] font-mono text-cyan-300 font-bold mt-1">
+              ?codigo=VD-2026-REV001
+            </span>
+            <span className="text-[10px] text-slate-400 mt-0.5">
+              Estado: REVOGADO
             </span>
 
             {/* Actions */}
             <div className="mt-4 pt-3 border-t border-blue-900/60 w-full flex items-center justify-center gap-2">
               <button
-                onClick={() => downloadQR(qrRevogado, 'qrcode-veridoc-revogado.png')}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors"
+                onClick={() => downloadQR(qrRevogado, 'qrcode-VD-2026-REV001.png')}
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors cursor-pointer"
                 title="Descarregar imagem do QR Code"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -287,7 +297,7 @@ export default function QRCodeModal({
 
               <button
                 onClick={() => copyToClipboard(urlRevogado)}
-                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors"
+                className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs inline-flex items-center gap-1 transition-colors cursor-pointer"
                 title="Copiar Link"
               >
                 {copiedUrl === urlRevogado ? (
@@ -301,13 +311,13 @@ export default function QRCodeModal({
               {onSelectStatus && (
                 <button
                   onClick={() => {
-                    onSelectStatus('revogado');
+                    onSelectStatus('revogado', 'VD-2026-REV001');
                     onClose();
                   }}
-                  className="p-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                  className="p-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
-                  <span>Ver Tela</span>
+                  <span>Ver</span>
                 </button>
               )}
             </div>
@@ -316,10 +326,10 @@ export default function QRCodeModal({
 
         {/* Instructions */}
         <div className="mt-6 pt-4 border-t border-blue-900/60 flex items-center justify-between text-xs text-slate-400">
-          <span>Ao apontar o smartphone, a página sincronizada exibe imediatamente o resultado correspondente.</span>
+          <span>O parâmetro <code className="text-cyan-300">?codigo=...</code> aciona a função <code className="text-cyan-300">mostrarResultado()</code> e renderiza o cartão correspondente.</span>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-colors"
+            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-colors cursor-pointer"
           >
             Fechar
           </button>

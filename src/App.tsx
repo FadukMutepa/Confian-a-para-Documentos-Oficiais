@@ -26,6 +26,13 @@ import VerifyModal from './components/VerifyModal.tsx';
 import PublicVerificationView, { PublicVerificationState } from './components/PublicVerificationView.tsx';
 import QRCodeModal from './components/QRCodeModal.tsx';
 
+// Expose global function mostrarResultado for browser console or external scripts
+declare global {
+  interface Window {
+    mostrarResultado?: (estado: string) => void;
+  }
+}
+
 // SVG QR Code generator component to faithfully render the certificate QR code
 function QRCodeSvg({ className = 'w-16 h-16' }: { className?: string }) {
   return (
@@ -137,7 +144,7 @@ const INITIAL_INSTITUTIONS: Institution[] = [
 
 const INITIAL_DOCUMENTS: OfficialDocument[] = [
   {
-    code: 'VD-2026-9A8F2K',
+    code: 'VD-2026-AUT001',
     title: 'Engenharia de Software e Sistemas de Informação',
     studentName: 'Carlos Eduardo Mendes',
     issueDate: '15 de Março de 2026',
@@ -147,59 +154,6 @@ const INITIAL_DOCUMENTS: OfficialDocument[] = [
   },
 ];
 
-// Helper to inspect URL when user scans QR code
-function parseUrlForVerification(): {
-  isVerify: boolean;
-  status: PublicVerificationState;
-  code: string;
-} {
-  if (typeof window === 'undefined') {
-    return { isVerify: false, status: 'autentico', code: 'VD-2026-9A8F2K' };
-  }
-
-  const path = window.location.pathname.toLowerCase();
-  const search = new URLSearchParams(window.location.search);
-  const hash = window.location.hash.toLowerCase();
-
-  const codeParam = search.get('verify') || search.get('code') || '';
-  const statusParam = search.get('status') || '';
-
-  const isVerify =
-    path.includes('/verify') ||
-    hash.includes('/verify') ||
-    codeParam !== '' ||
-    statusParam !== '';
-
-  let status: PublicVerificationState = 'autentico';
-  let code = 'VD-2026-9A8F2K';
-
-  if (
-    path.includes('alterado') ||
-    hash.includes('alterado') ||
-    statusParam.toLowerCase() === 'alterado' ||
-    codeParam.toLowerCase().includes('alterado')
-  ) {
-    status = 'alterado';
-    code = 'VD-2026-ALTERADO';
-  } else if (
-    path.includes('revogado') ||
-    hash.includes('revogado') ||
-    statusParam.toLowerCase() === 'revogado' ||
-    codeParam.toLowerCase().includes('revogado')
-  ) {
-    status = 'revogado';
-    code = 'VD-2026-REVOGADO';
-  } else if (codeParam) {
-    code = codeParam.toUpperCase();
-    status = 'autentico';
-  } else if (path.includes('autentico') || hash.includes('autentico')) {
-    code = 'VD-2026-AUTENTICO';
-    status = 'autentico';
-  }
-
-  return { isVerify, status, code };
-}
-
 export default function App() {
   const [currentView, setCurrentView] = useState<ViewMode>('landing');
   const [institutions, setInstitutions] = useState<Institution[]>(INITIAL_INSTITUTIONS);
@@ -208,20 +162,74 @@ export default function App() {
 
   // Public verification result state
   const [publicVerifyStatus, setPublicVerifyStatus] = useState<PublicVerificationState>('autentico');
-  const [publicVerifyCode, setPublicVerifyCode] = useState<string>('VD-2026-9A8F2K');
+  const [publicVerifyCode, setPublicVerifyCode] = useState<string>('VD-2026-AUT001');
 
   // Modal states
   const [isVerifyOpen, setIsVerifyOpen] = useState(false);
-  const [verifyTargetCode, setVerifyTargetCode] = useState('VD-2026-9A8F2K');
+  const [verifyTargetCode, setVerifyTargetCode] = useState('VD-2026-AUT001');
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
-  // Detect URL on page load (e.g. when QR code is scanned!)
+  // Exact function mostrarResultado requested by the user
+  const mostrarResultado = (estado: string, customCode?: string) => {
+    let cleanStatus: PublicVerificationState = 'autentico';
+    let code = customCode || 'VD-2026-AUT001';
+
+    if (estado === 'alterado' || estado.toLowerCase().includes('alt')) {
+      cleanStatus = 'alterado';
+      code = customCode || 'VD-2026-ALT001';
+    } else if (estado === 'revogado' || estado.toLowerCase().includes('rev')) {
+      cleanStatus = 'revogado';
+      code = customCode || 'VD-2026-REV001';
+    } else {
+      cleanStatus = 'autentico';
+      code = customCode || 'VD-2026-AUT001';
+    }
+
+    setPublicVerifyStatus(cleanStatus);
+    setPublicVerifyCode(code);
+    setCurrentView('public-verify');
+  };
+
+  // Expose mostrarResultado on window so it exists globally
   useEffect(() => {
-    const { isVerify, status, code } = parseUrlForVerification();
-    if (isVerify) {
-      setPublicVerifyStatus(status);
-      setPublicVerifyCode(code);
-      setCurrentView('public-verify');
+    window.mostrarResultado = (estado: string) => mostrarResultado(estado);
+  }, []);
+
+  // Detect URL parameter on page load (e.g. ?codigo=VD-2026-AUT001 or QR code scan)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const search = new URLSearchParams(window.location.search);
+    const codigo = search.get('codigo') || search.get('verify') || search.get('code') || '';
+    const statusParam = search.get('status') || '';
+    const path = window.location.pathname.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+
+    if (codigo || statusParam || path.includes('/verify') || hash.includes('/verify')) {
+      // 1. Alterado condition
+      if (
+        codigo === 'VD-2026-ALT001' ||
+        codigo.toUpperCase().includes('ALT') ||
+        statusParam === 'alterado' ||
+        path.includes('alterado') ||
+        hash.includes('alterado')
+      ) {
+        mostrarResultado('alterado', codigo || 'VD-2026-ALT001');
+      }
+      // 2. Revogado condition
+      else if (
+        codigo === 'VD-2026-REV001' ||
+        codigo.toUpperCase().includes('REV') ||
+        statusParam === 'revogado' ||
+        path.includes('revogado') ||
+        hash.includes('revogado')
+      ) {
+        mostrarResultado('revogado', codigo || 'VD-2026-REV001');
+      }
+      // 3. Autêntico condition
+      else {
+        mostrarResultado('autentico', codigo || 'VD-2026-AUT001');
+      }
     }
   }, []);
 
@@ -269,36 +277,14 @@ export default function App() {
     setIsVerifyOpen(true);
   };
 
-  // Direct trigger to test public verification screen
-  const openPublicVerification = (status: PublicVerificationState) => {
-    setPublicVerifyStatus(status);
-    setPublicVerifyCode(
-      status === 'autentico'
-        ? 'VD-2026-AUTENTICO'
-        : status === 'alterado'
-        ? 'VD-2026-ALTERADO'
-        : 'VD-2026-REVOGADO'
-    );
-    setCurrentView('public-verify');
-  };
-
-  // View: Public Verification View (Shown when QR is scanned!)
+  // View: Public Verification View (Rendered with id="resultado" matching illustration!)
   if (currentView === 'public-verify') {
     return (
       <PublicVerificationView
         status={publicVerifyStatus}
         code={publicVerifyCode}
         onNavigateHome={() => setCurrentView('landing')}
-        onChangeStatus={(s) => {
-          setPublicVerifyStatus(s);
-          setPublicVerifyCode(
-            s === 'autentico'
-              ? 'VD-2026-AUTENTICO'
-              : s === 'alterado'
-              ? 'VD-2026-ALTERADO'
-              : 'VD-2026-REVOGADO'
-          );
-        }}
+        onChangeStatus={(s) => mostrarResultado(s)}
       />
     );
   }
@@ -366,7 +352,7 @@ export default function App() {
       <QRCodeModal
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
-        onSelectStatus={openPublicVerification}
+        onSelectStatus={(status, code) => mostrarResultado(status, code)}
       />
 
       {/* Floating Button to open QR Codes Modal */}
@@ -376,7 +362,7 @@ export default function App() {
           className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-3 rounded-2xl shadow-xl shadow-blue-600/40 flex items-center gap-2.5 transition-all hover:scale-105 border border-blue-400/40 cursor-pointer"
         >
           <QrCode className="w-5 h-5" />
-          <span className="text-xs sm:text-sm">3 QR Codes de Teste</span>
+          <span className="text-xs sm:text-sm">3 QR Codes (?codigo=...)</span>
         </button>
       </div>
 
@@ -407,7 +393,7 @@ export default function App() {
               Início
             </button>
             <button
-              onClick={() => openVerifierWithCode('VD-2026-9A8F2K')}
+              onClick={() => openVerifierWithCode('VD-2026-AUT001')}
               className="px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 text-slate-300 hover:text-white cursor-pointer"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
@@ -433,7 +419,7 @@ export default function App() {
             </button>
             <button
               type="button"
-              onClick={() => openVerifierWithCode('VD-2026-9A8F2K')}
+              onClick={() => openVerifierWithCode('VD-2026-AUT001')}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4.5 py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-md shadow-blue-600/30 transition-all cursor-pointer"
             >
               <ShieldCheck className="w-4 h-4" />
@@ -470,7 +456,7 @@ export default function App() {
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <button
                   type="button"
-                  onClick={() => openVerifierWithCode('VD-2026-9A8F2K')}
+                  onClick={() => openVerifierWithCode('VD-2026-AUT001')}
                   className="flex items-center gap-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3 rounded-lg text-sm shadow-lg shadow-blue-600/30 transition-all cursor-pointer"
                 >
                   <CheckCircle2 className="w-4 h-4 text-white" />
@@ -584,7 +570,7 @@ export default function App() {
                       CÓDIGO DE REGISTO:
                     </span>
                     <span className="text-cyan-400 font-mono font-bold text-sm tracking-wide block">
-                      VD-2026-9A8F2K
+                      VD-2026-AUT001
                     </span>
                     <span className="text-slate-500 font-mono text-[11px] block truncate max-w-[200px]">
                       Hash: e3b0c44298fc1c14...
@@ -599,7 +585,7 @@ export default function App() {
                 <div className="mt-6 pt-4 border-t border-slate-800/60 text-center">
                   <button
                     type="button"
-                    onClick={() => openPublicVerification('autentico')}
+                    onClick={() => mostrarResultado('autentico', 'VD-2026-AUT001')}
                     className="text-blue-400 hover:text-blue-300 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors group cursor-pointer"
                   >
                     <span>Testar verificação deste modelo</span>
@@ -844,7 +830,6 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 pb-12 border-b border-slate-800/80">
             
-            {/* Column 1: Brand */}
             <div className="lg:col-span-4">
               <div
                 onClick={() => setCurrentView('landing')}
@@ -873,7 +858,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Column 2: Navegação */}
             <div className="lg:col-span-2">
               <h4 className="text-white font-semibold text-xs tracking-wider uppercase mb-4">
                 Navegação
@@ -889,7 +873,7 @@ export default function App() {
                 </li>
                 <li>
                   <button
-                    onClick={() => openVerifierWithCode('VD-2026-9A8F2K')}
+                    onClick={() => openVerifierWithCode('VD-2026-AUT001')}
                     className="hover:text-white transition-colors cursor-pointer"
                   >
                     Verificar Código
@@ -914,7 +898,6 @@ export default function App() {
               </ul>
             </div>
 
-            {/* Column 3: Solução */}
             <div className="lg:col-span-2">
               <h4 className="text-white font-semibold text-xs tracking-wider uppercase mb-4">
                 Solução
@@ -955,7 +938,6 @@ export default function App() {
               </ul>
             </div>
 
-            {/* Column 4: Segurança & Autenticidade */}
             <div className="lg:col-span-4">
               <h4 className="text-white font-semibold text-xs tracking-wider uppercase mb-4">
                 Segurança & Autenticidade

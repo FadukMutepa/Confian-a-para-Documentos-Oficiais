@@ -6,8 +6,6 @@ import {
   ShieldCheck,
   ArrowLeft,
   Lock,
-  ExternalLink,
-  RotateCcw,
 } from 'lucide-react';
 
 export type PublicVerificationState = 'autentico' | 'alterado' | 'revogado';
@@ -21,7 +19,7 @@ interface PublicVerificationViewProps {
 
 export default function PublicVerificationView({
   status,
-  code = 'VD-2026-9A8F2K',
+  code = 'VD-2026-AUT001',
   onNavigateHome,
   onChangeStatus,
 }: PublicVerificationViewProps) {
@@ -29,55 +27,58 @@ export default function PublicVerificationView({
 
   return (
     <div className="min-h-screen bg-[#f1f5f9] flex flex-col justify-center items-center py-10 px-4 font-['Plus_Jakarta_Sans',sans-serif]">
-      {/* Top navigation back button */}
-      <div className="w-full max-w-[420px] mb-4 flex items-center justify-between">
+      {/* Top navigation back button & simulator switcher */}
+      <div className="w-full max-w-[440px] mb-4 flex items-center justify-between">
         <button
           onClick={onNavigateHome}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Voltar ao portal VeriDoc</span>
         </button>
 
-        {/* Status switcher for simulation illustration */}
+        {/* Quick simulator switcher */}
         {onChangeStatus && (
           <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 shadow-xs text-[11px] font-semibold">
             <button
               onClick={() => onChangeStatus('autentico')}
-              className={`px-2 py-0.5 rounded-lg transition-colors ${
+              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                 status === 'autentico'
-                  ? 'bg-emerald-600 text-white'
+                  ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-emerald-700'
               }`}
             >
-              Válido
+              🟢 Válido
             </button>
             <button
               onClick={() => onChangeStatus('alterado')}
-              className={`px-2 py-0.5 rounded-lg transition-colors ${
+              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                 status === 'alterado'
-                  ? 'bg-amber-500 text-white'
+                  ? 'bg-amber-500 text-white shadow-xs'
                   : 'text-slate-600 hover:text-amber-700'
               }`}
             >
-              Alterado
+              🟠 Alterado
             </button>
             <button
               onClick={() => onChangeStatus('revogado')}
-              className={`px-2 py-0.5 rounded-lg transition-colors ${
+              className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
                 status === 'revogado'
-                  ? 'bg-rose-600 text-white'
+                  ? 'bg-rose-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-rose-700'
               }`}
             >
-              Revogado
+              🔴 Revogado
             </button>
           </div>
         )}
       </div>
 
-      {/* Main Verification Card matching the user's illustration */}
-      <div className="w-full max-w-[420px] bg-white rounded-3xl border-2 border-slate-900 shadow-2xl overflow-hidden p-7 sm:p-8 flex flex-col relative">
+      {/* Main Container with ID #resultado as requested */}
+      <div
+        id="resultado"
+        className="w-full max-w-[440px] bg-white rounded-3xl border-2 border-slate-900 shadow-2xl overflow-hidden p-7 sm:p-8 flex flex-col relative"
+      >
         {/* Card Header */}
         <div className="mb-5">
           <div className="flex items-center gap-2">
@@ -94,8 +95,8 @@ export default function PublicVerificationView({
         {/* 1. AUTÊNTICO (DOCUMENTO VÁLIDO)                           */}
         {/* ========================================================= */}
         {status === 'autentico' && (
-          <div>
-            {/* Green Banner */}
+          <div className="resultado autentico">
+            {/* Green Banner matching illustration */}
             <div className="bg-[#15803d] rounded-2xl py-6 px-4 text-center text-white shadow-md mb-6">
               <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-2.5">
                 <CheckCircle2 className="w-9 h-9 text-white" />
@@ -103,9 +104,12 @@ export default function PublicVerificationView({
               <h2 className="font-extrabold text-base sm:text-lg tracking-wider uppercase">
                 DOCUMENTO VÁLIDO
               </h2>
+              <p className="text-xs font-semibold text-emerald-100 tracking-wider mt-0.5">
+                Estado: AUTÊNTICO
+              </p>
             </div>
 
-            {/* Details Fields with clean labels and values matching illustration */}
+            {/* Document Details from illustration */}
             <div className="space-y-4 text-xs">
               <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100">
                 <span className="text-slate-500 font-medium shrink-0">
@@ -144,13 +148,13 @@ export default function PublicVerificationView({
               </div>
             </div>
 
-            {/* Security Cryptographic Seal */}
+            {/* Cryptographic check */}
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
               <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
                 <span>Assinatura Digital Verificada</span>
               </span>
-              <span className="font-mono text-[10px]">SHA-256 OK</span>
+              <span className="font-mono text-[10px] text-emerald-700 font-bold">SHA-256 OK</span>
             </div>
           </div>
         )}
@@ -159,8 +163,8 @@ export default function PublicVerificationView({
         {/* 2. ALTERADO (DADOS NÃO CORRESPONDEM)                      */}
         {/* ========================================================= */}
         {status === 'alterado' && (
-          <div>
-            {/* Amber Banner */}
+          <div className="resultado alterado">
+            {/* Amber Banner matching illustration */}
             <div className="bg-[#d97706] rounded-2xl py-6 px-4 text-center text-white shadow-md mb-6">
               <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-2.5">
                 <AlertTriangle className="w-9 h-9 text-white" />
@@ -168,9 +172,12 @@ export default function PublicVerificationView({
               <h2 className="font-extrabold text-base sm:text-lg tracking-wider uppercase">
                 DADOS NÃO CORRESPONDEM
               </h2>
+              <p className="text-xs font-semibold text-amber-100 tracking-wider mt-0.5">
+                Estado: ALTERADO
+              </p>
             </div>
 
-            {/* Message exact from illustration */}
+            {/* Exact message from illustration */}
             <div className="py-2">
               <p className="text-slate-800 text-sm sm:text-base leading-relaxed">
                 O cruzamento de dados acusa divergência: nome, nota ou curso foram editados no documento.
@@ -198,8 +205,8 @@ export default function PublicVerificationView({
         {/* 3. REVOGADO (DOCUMENTO REVOGADO)                          */}
         {/* ========================================================= */}
         {status === 'revogado' && (
-          <div>
-            {/* Red Banner */}
+          <div className="resultado revogado">
+            {/* Red Banner matching illustration */}
             <div className="bg-[#b91c1c] rounded-2xl py-6 px-4 text-center text-white shadow-md mb-6">
               <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-2.5">
                 <XCircle className="w-9 h-9 text-white" />
@@ -207,9 +214,12 @@ export default function PublicVerificationView({
               <h2 className="font-extrabold text-base sm:text-lg tracking-wider uppercase">
                 DOCUMENTO REVOGADO
               </h2>
+              <p className="text-xs font-semibold text-rose-100 tracking-wider mt-0.5">
+                Estado: REVOGADO
+              </p>
             </div>
 
-            {/* Message exact from illustration */}
+            {/* Exact message from illustration */}
             <div className="py-2">
               <p className="text-slate-800 text-sm sm:text-base leading-relaxed">
                 <strong className="underline font-bold">A</strong> instituição alterou o estado do registo. O QR Code passa <strong className="underline font-bold">a</strong> exibir este alerta.
@@ -220,7 +230,7 @@ export default function PublicVerificationView({
               <strong className="block font-bold text-rose-950 mb-1">
                 Motivo da Revogação:
               </strong>
-              Cancelamento formal solicitado pela Secretaria Académica da entidade emissora. Este documento perdeu qualquer validade legal.
+              Cancelamento formal emitido pela Secretaria Académica da entidade emissora. Este documento perdeu qualquer validade legal.
             </div>
 
             <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
@@ -234,7 +244,7 @@ export default function PublicVerificationView({
         )}
       </div>
 
-      {/* Footer Label below card */}
+      {/* Label below card */}
       <div className="mt-4 text-center">
         {status === 'autentico' && (
           <span className="font-bold text-base text-[#15803d]">Autêntico</span>
@@ -247,8 +257,7 @@ export default function PublicVerificationView({
         )}
       </div>
 
-      {/* Trust Notice */}
-      <p className="text-xs text-slate-400 mt-4 text-center max-w-sm">
+      <p className="text-xs text-slate-400 mt-3 text-center max-w-sm">
         Consulta pública garantida pela tecnologia de certificação digital VeriDoc
       </p>
     </div>
